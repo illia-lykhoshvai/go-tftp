@@ -234,6 +234,8 @@ func (c *conn) handleRRQResponse() stateType {
 		return c.readSetup
 	case opCodeDATA:
 		// Server doesn't support options,
+		// so omit parsing them
+		c.optionsParsed = true
 		// write data to the buf so it's available for reading
 		n, err := c.rxBuf.Write(c.rx.data())
 		if err != nil {
@@ -433,10 +435,15 @@ func (c *conn) readSetup() stateType {
 		c.reader = netascii.NewReader(c.reader)
 	}
 
-	ackOpts, err := c.parseOptions()
-	if err != nil {
-		c.err = wrapError(err, "read setup")
-		return nil
+	var ackOpts options
+	var err error
+
+	if !c.optionsParsed {
+		ackOpts, err = c.parseOptions()
+		if err != nil {
+			c.err = wrapError(err, "read setup")
+			return nil
+		}
 	}
 
 	// Set buf size
